@@ -7,6 +7,8 @@
 * [Lab 3](lab3)  - Azure CosmosDB;
 * [Lab 4](lab4)  - Azure Redis Cache;
 * [Lab 5](lab5)  - Azure Functions;
+* [Lab 6](lab6)  - Artillery;
+*  Lab 7  - Project Support;
 
 ## Project #1
 

@@ -14,7 +14,11 @@ of Tomcat10, while using remote Azure Resources (BlobStorage, CosmosDB and Redis
 
 `docker run -ti --net=host smduarte/tomcat10`
 
-**Note:** Make sure nothing is already using port 8080 in your host machine.
+**Note:** 
+
+Make sure nothing is already using port 8080 in your host machine.
+
+In Windows and macOS, make sure you have the latest docker version and have `Host Networking` enabled in Settings.
 
 Once Tomcat10 is running, you can access the Tomcat10 manager app via:
 
@@ -39,7 +43,7 @@ If prompted for a login/password, use: `tomcat` and `s3cret`
        </configuration>
 </plugin>
 ```
-**Note:** The login is `maven` `s3cret`and the path must start with `/`
+**Note:** The login is `maven` and `s3cret`and the path must start with `/`
 The plugin was originally for Tomcat7 but also works with Tomcat10.
 
 2. To deploy the web application, execute:
@@ -52,7 +56,7 @@ that you have in the pom.xml
 <packaging>war</packaging>
 ```
 
-3. Try the application. Check the Tomcap10 manager page:
+3. Try the application. Check the Tomcat10 manager page:
 
 [http://127.0.0.1:8080/manager/html](http://tomcat:s3cret@127.0.0.1:8080/manager/html)
 
