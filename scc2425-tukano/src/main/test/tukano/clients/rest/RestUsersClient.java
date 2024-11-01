@@ -72,6 +72,11 @@ public class RestUsersClient extends RestClient implements Users {
 	}
 
 	@Override
+	public Result<User> getUserWithoutPwd(String userId) {
+		return null;
+	}
+
+	@Override
 	public Result<User> updateUser(String userId, String pwd, User user) {
 		return super.reTry( () -> _updateUser(userId, pwd, user));
 	}

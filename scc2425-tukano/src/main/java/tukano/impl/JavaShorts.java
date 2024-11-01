@@ -50,11 +50,11 @@ public class JavaShorts implements Shorts {
 		Log.info(() -> format("createShort : userId = %s, pwd = %s\n", userId, password));
 
 		return errorOrResult( okUser(userId, password), user -> {
-			
-			var shortId = format("%s+%s", userId, UUID.randomUUID());
-			var blobUrl = format("%s/%s/%s", TukanoRestServer.serverURI, Blobs.NAME, shortId); 
+
+			var uuid = UUID.randomUUID();
+			var shortId = format("%s+%s", userId, uuid);
+			var blobUrl = uuid.toString();
 			var shrt = new Short(shortId, userId, blobUrl);
-			shrt = shrt.copyWithLikes_And_Token(0);
 
 			return errorOrValue(cosmosDBLayerForShorts.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
 		});
