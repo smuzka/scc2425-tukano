@@ -28,8 +28,8 @@ public class RestShortsResource extends RestResource implements RestShorts {
 		return super.resultOrThrow( impl.getShort(shortId));
 	}
 	@Override
-	public List<String> getShorts(String userId) {
-		return super.resultOrThrow( impl.getShorts(userId));
+	public List<String> getShorts(String userId, String pwd) {
+		return super.resultOrThrow( impl.getShorts(userId, pwd));
 	}
 
 	@Override

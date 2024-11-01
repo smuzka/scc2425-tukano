@@ -17,23 +17,6 @@ public class CosmosDBLayer {
 	private static final String CONNECTION_URL = "...";
 	private static final String DB_NAME = "...";
 	private String containerName;
-
-//	private static final String DB_KEY = System.getProperty("COSMOSDB_KEY");
-//	private static final String CONNECTION_URL = 	System.getProperty("COSMOSDB_URL");
-//	private static final String DB_NAME = 	System.getProperty("COSMOSDB_DATABASE");
-//	static String CONTAINER_NAME = "users";
-
-
-
-//	private static CosmosDBLayer instance;
-
-//	public static synchronized CosmosDBLayer getInstance() {
-//		System.out.println(DB_KEY);
-//
-//		instance = new CosmosDBLayer( client);
-//		return instance;
-//
-//	}
 	
 	private CosmosClient client;
 	private CosmosDatabase db;

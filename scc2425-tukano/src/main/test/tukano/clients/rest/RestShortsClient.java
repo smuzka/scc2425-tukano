@@ -143,7 +143,7 @@ public class RestShortsClient extends RestClient implements Shorts{
 	}
 
 	@Override
-	public Result<List<String>> getShorts(String userId) {
+	public Result<List<String>> getShorts(String userId, String pwd) {
 		return super.reTry( () -> _getShorts(userId));
 	}
 

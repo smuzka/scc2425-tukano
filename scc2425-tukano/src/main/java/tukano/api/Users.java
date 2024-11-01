@@ -24,7 +24,9 @@ public interface Users {
 	 *         NOT_FOUND - if no user exists with the provided userId
 	 */
 	Result<User> getUser(String userId, String pwd);
-	
+
+	Result<User> getUserWithoutPwd(String userId);
+
 	/**
 	 * Modifies the information of a user. Value of null, in any field of the user argument, means the field will remain as unchanged 
 	 * (the userId cannot be modified).
