@@ -53,6 +53,16 @@ public class JavaUsers implements Users {
 	}
 
 	@Override
+	public Result<User> getUserWithoutPwd(String userId) {
+		Log.info( () -> format("getUser : userId = %s, pwd = *no pwd*\n", userId));
+
+		if (userId == null)
+			return error(BAD_REQUEST);
+
+		return cosmosDBLayer.getOne( userId, User.class);
+	}
+
+	@Override
 	public Result<User> updateUser(String userId, String pwd, User other) {
 		Log.info(() -> format("updateUser : userId = %s, pwd = %s, user: %s\n", userId, pwd, other));
 

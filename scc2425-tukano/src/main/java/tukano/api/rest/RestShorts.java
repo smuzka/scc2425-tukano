@@ -46,7 +46,7 @@ public interface RestShorts {
 	@GET
 	@Path("/{" + USER_ID + "}" + SHORTS )
 	@Produces(MediaType.APPLICATION_JSON)
-	List<String> getShorts(@PathParam(USER_ID) String userId);
+	List<String> getShorts(@PathParam(USER_ID) String userId,  @QueryParam(PWD) String password);
 
 	@POST
 	@Path("/{" + USER_ID1 + "}/{" + USER_ID2 + "}" + FOLLOWERS )

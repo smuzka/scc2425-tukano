@@ -57,7 +57,7 @@ public interface Shorts {
 	 * @param userId the user that owns the requested shorts
 	 * @return (OK, List<String>|empty list) or NOT_FOUND if the user does not exist
 	 */
-	Result<List<String>> getShorts( String userId );
+	Result<List<String>> getShorts( String userId, String pwd);
 	
 	/**
 	 * Causes a user to follow the shorts of another user.

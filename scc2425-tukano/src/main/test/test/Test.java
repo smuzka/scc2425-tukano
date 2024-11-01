@@ -76,7 +76,7 @@ public class Test {
 		show(shorts.getFeed("liskov", "12345"));
 		show(shorts.getShort( s2id ));
 		
-		show(shorts.getShorts( "wales" ));
+		show(shorts.getShorts( "wales", "54321"));
 		
 		show(shorts.followers("wales", "12345"));
 
