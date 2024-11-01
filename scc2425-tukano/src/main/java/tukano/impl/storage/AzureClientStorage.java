@@ -8,6 +8,7 @@ import com.azure.storage.blob.BlobContainerClientBuilder;
 import java.util.function.Consumer;
 
 import tukano.api.Result;
+import utils.CSVLogger;
 
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.INTERNAL_ERROR;
@@ -44,11 +45,13 @@ public class AzureClientStorage implements BlobStorage {
             return error(BAD_REQUEST);
 
         try {
+            long startTime = System.currentTimeMillis();
+
             BinaryData data = BinaryData.fromBytes(bytes);
             AzureClientStorage azureClientContainer = AzureClientStorage.getInstance();
 
             azureClientContainer.getContainerClient(path).upload(data);
-
+            csvLogger.logToCSV("Blob Upload without redis", System.currentTimeMillis() - startTime);
             return ok();
 
         } catch (Exception e) {
@@ -63,8 +66,11 @@ public class AzureClientStorage implements BlobStorage {
             return error(BAD_REQUEST);
 
         try {
+            long startTime = System.currentTimeMillis();
+
             AzureClientStorage azureClientContainer = AzureClientStorage.getInstance();
             azureClientContainer.getContainerClient(path).delete();
+            csvLogger.logToCSV("Blob Delete without redis", System.currentTimeMillis() - startTime);
 
             return ok();
         } catch (Exception e) {
@@ -79,9 +85,14 @@ public class AzureClientStorage implements BlobStorage {
             return error(BAD_REQUEST);
 
         try {
+            long startTime = System.currentTimeMillis();
+
             AzureClientStorage azureClientContainer = AzureClientStorage.getInstance();
 
-            return ok(azureClientContainer.getContainerClient(path).downloadContent().toBytes());
+            byte[] result = azureClientContainer.getContainerClient(path).downloadContent().toBytes();
+            csvLogger.logToCSV("Blob Download without redis", System.currentTimeMillis() - startTime);
+
+            return ok(result);
 
         } catch (Exception e) {
             e.printStackTrace();
