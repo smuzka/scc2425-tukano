@@ -1,10 +1,5 @@
 package tukano.impl;
 
-import static java.lang.String.format;
-import static tukano.api.Result.*;
-import static tukano.api.Result.ErrorCode.BAD_REQUEST;
-import static tukano.api.Result.ErrorCode.FORBIDDEN;
-
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -12,12 +7,21 @@ import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
 import tukano.db.CosmosDBLayer;
-import utils.DB;
+import utils.CSVLogger;
+
+import static java.lang.String.format;
+import static tukano.api.Result.ErrorCode.BAD_REQUEST;
+import static tukano.api.Result.ErrorCode.FORBIDDEN;
+import static tukano.api.Result.error;
+import static tukano.api.Result.errorOrResult;
+import static tukano.api.Result.errorOrValue;
+import static tukano.api.Result.ok;
 
 public class JavaUsers implements Users {
 
 	private final static String REDIS_USERS = "users:";
 
+	CSVLogger csvLogger = new CSVLogger();
 	private static Logger Log = Logger.getLogger(JavaUsers.class.getName());
 	private static Users instance;
 	private final CosmosDBLayer cosmosDBLayer = new CosmosDBLayer("users");
@@ -47,6 +51,7 @@ public class JavaUsers implements Users {
 
 	@Override
 	public Result<User> getUser(String userId, String pwd) {
+		long startTime = System.currentTimeMillis();
 		Log.info( () -> format("getUser : userId = %s, pwd = %s\n", userId, pwd));
 
 		if (userId == null)
@@ -54,9 +59,12 @@ public class JavaUsers implements Users {
 
 		User CacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
 		if (CacheUser != null) {
+			csvLogger.logToCSV("Get user with redis", System.currentTimeMillis() - startTime);
+
 			return ok(CacheUser);
 		}
 
+		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
 		return validatedUserOrError( cosmosDBLayer.getOne( userId, User.class), pwd);
 	}
 

@@ -1,13 +1,5 @@
 package tukano.impl;
 
-import static java.lang.String.format;
-import static tukano.api.Result.error;
-import static tukano.api.Result.errorOrResult;
-import static tukano.api.Result.errorOrValue;
-import static tukano.api.Result.errorOrVoid;
-import static tukano.api.Result.ok;
-import static tukano.api.Result.ErrorCode.BAD_REQUEST;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,18 +8,32 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import tukano.api.*;
+import tukano.api.ErrorResult;
+import tukano.api.OkResult;
+import tukano.api.Result;
 import tukano.api.Short;
+import tukano.api.Shorts;
+import tukano.api.User;
 import tukano.db.CosmosDBLayer;
 import tukano.impl.data.Following;
 import tukano.impl.data.Likes;
 import tukano.pojoModels.CountResult;
 import tukano.pojoModels.Id;
+import utils.CSVLogger;
+
+import static java.lang.String.format;
+import static tukano.api.Result.ErrorCode.BAD_REQUEST;
+import static tukano.api.Result.error;
+import static tukano.api.Result.errorOrResult;
+import static tukano.api.Result.errorOrValue;
+import static tukano.api.Result.errorOrVoid;
+import static tukano.api.Result.ok;
 
 public class JavaShorts implements Shorts {
 
 	private final static String REDIS_SHORTS = "shorts:";
 
+	CSVLogger csvLogger = new CSVLogger();
 	private static Logger Log = Logger.getLogger(JavaShorts.class.getName());
 	CosmosDBLayer cosmosDBLayerForShorts = new CosmosDBLayer("shorts");
 	CosmosDBLayer cosmosDBLayerForLikes = new CosmosDBLayer("likes");
@@ -65,6 +71,7 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<Short> getShort(String shortId) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("getShort : shortId = %s\n", shortId));
 
 		if( shortId == null )
@@ -76,9 +83,11 @@ public class JavaShorts implements Shorts {
 
 		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
 		if (CacheShort != null) {
+			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
 			return ok(CacheShort.copyWithLikes_And_Token( results.value()));
 		}
 
+		csvLogger.logToCSV("Get short without redis", System.currentTimeMillis() - startTime);
 		return errorOrValue( cosmosDBLayerForShorts.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( results.value()));
 	}
 
