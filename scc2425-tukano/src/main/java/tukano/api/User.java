@@ -11,8 +11,6 @@ public class User {
 	private String pwd;
 	private String email;	
 	private String displayName;
-//	private String _rid; // Cosmos generated unique id of item
-//	private String _ts;
 
 	public User() {}
 	

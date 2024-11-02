@@ -69,7 +69,6 @@ public class JavaShorts implements Shorts {
 
 
 		var query = format("SELECT count(1) AS count FROM likes l WHERE l.shortId = '%s'", shortId);
-		System.out.println(query);
 		var likes = cosmosDBLayerForLikes.query(CountResult.class, query);
 		var results = transformSingleResult(likes, CountResult::getCount);
 
@@ -187,8 +186,8 @@ public class JavaShorts implements Shorts {
 
 		if (!followeeIds.isEmpty()) {
 			String followeeIdsString = followeeIds.stream()
-					.map(id -> "'" + id + "'") // Wrap each ID in single quotes
-					.collect(Collectors.joining(",")); //
+					.map(id -> "'" + id + "'")
+					.collect(Collectors.joining(","));
 			var followedShortsResult = cosmosDBLayerForShorts.query(Short.class, String.format("SELECT s.id, s.timestamp FROM shorts s WHERE s.ownerId IN (%s)", followeeIdsString));
 			if (followedShortsResult.isOK()) {
 				combinedResults.addAll(followedShortsResult.value());
@@ -197,7 +196,7 @@ public class JavaShorts implements Shorts {
 
 		combinedResults.sort(Comparator.comparing(Short::getTimestamp).reversed());
 		List<String> shortIds = combinedResults.stream()
-				.map(Short::getId) // Use method reference to map Short to its ID
+				.map(Short::getId)
 				.collect(Collectors.toList());
 
 		return errorOrValue( okUser( userId, password), shortIds);
@@ -213,8 +212,8 @@ public class JavaShorts implements Shorts {
 
 
 	private Result<Void> okUser( String userId ) {
-		var res = okUserWithoutPwd( userId);
-		if( res.error() == FORBIDDEN )
+		var res = okUserWithoutPwd(userId);
+		if( res.isOK())
 			return ok();
 		else
 			return error( res.error() );
