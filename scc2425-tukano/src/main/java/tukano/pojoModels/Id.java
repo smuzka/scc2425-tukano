@@ -4,7 +4,6 @@ public class Id {
     private String id;
 
     public Id() {
-        // Default constructor
     }
 
     public String getId() {

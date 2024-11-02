@@ -2,11 +2,15 @@ package tukano.db;
 
 import com.azure.cosmos.*;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
+import com.azure.cosmos.models.CosmosItemResponse;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
+import tukano.api.ErrorResult;
+import tukano.api.OkResult;
 import tukano.api.Result;
 import tukano.api.Result.ErrorCode;
 import utils.PropsEnv;
+import tukano.api.User;
 
 
 import java.util.List;
@@ -58,9 +62,18 @@ public class CosmosDBLayer {
 	public <T> Result<T> getOne(String id, Class<T> clazz) {
 		return tryCatch( () -> container.readItem(id, new PartitionKey(id), clazz).getItem());
 	}
-	
-	public <T> Result<?> deleteOne(T obj) {
-		return tryCatch( () -> container.deleteItem(obj, new CosmosItemRequestOptions()).getItem());
+
+	public Result<User> deleteUser(User obj) {
+		return tryCatch( () -> (User)container.deleteItem(obj, new CosmosItemRequestOptions()).getItem());
+	}
+
+	public <T> Result<Void> deleteOneWithVoid(T obj) {
+		try {
+			CosmosItemResponse<Object> response = container.deleteItem(obj, new CosmosItemRequestOptions());
+			return new OkResult<>(null);
+		} catch (Exception e) {
+			return new ErrorResult<>(ErrorCode.INTERNAL_ERROR);
+		}
 	}
 	
 	public <T> Result<T> updateOne(T obj) {
@@ -91,7 +104,7 @@ public class CosmosDBLayer {
 			return Result.error( ErrorCode.INTERNAL_ERROR);
 		}
 	}
-	
+
 	static Result.ErrorCode errorCodeFromStatus( int status ) {
 		return switch( status ) {
 		case 200 -> ErrorCode.OK;

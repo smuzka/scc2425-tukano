@@ -1,10 +1,7 @@
 package tukano.impl;
 
 import static java.lang.String.format;
-import static tukano.api.Result.error;
-import static tukano.api.Result.errorOrResult;
-import static tukano.api.Result.errorOrValue;
-import static tukano.api.Result.ok;
+import static tukano.api.Result.*;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
 
@@ -15,6 +12,7 @@ import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
 import tukano.db.CosmosDBLayer;
+import utils.DB;
 
 public class JavaUsers implements Users {
 
@@ -88,28 +86,21 @@ public class JavaUsers implements Users {
 		return result;
 	}
 
-	//todo: add deltion of shorts and blobs
 	@Override
 	public Result<User> deleteUser(String userId, String pwd) {
 		Log.info(() -> format("deleteUser : userId = %s, pwd = %s\n", userId, pwd));
 
 		if (userId == null || pwd == null )
 			return error(BAD_REQUEST);
-//
 		return  errorOrResult( validatedUserOrError(cosmosDBLayer.getOne( userId, User.class), pwd), user -> {
+			JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
 
-			// Delete user shorts and related info asynchronously in a separate thread
-//			Executors.defaultThreadFactory().newThread( () -> {
-//				JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
-//				JavaBlobs.getInstance().deleteAllBlobs(userId, Token.get(userId));
-//			}).start();
+            Result<User> result = cosmosDBLayer.deleteUser(user);
+            if (result.isOK()) {
+                RedisJedisPool.removeFromCache(REDIS_USERS + userId);
+            }
 
-			Result<User> result = errorOrValue( cosmosDBLayer.deleteOne( user), user);
-			if (result.isOK()) {
-				RedisJedisPool.removeFromCache(REDIS_USERS + userId);
-			}
-
-			return result;
+            return  result;
 		});
 	}
 

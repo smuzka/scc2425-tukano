@@ -22,7 +22,6 @@ import tukano.api.Short;
 import tukano.db.CosmosDBLayer;
 import tukano.impl.data.Following;
 import tukano.impl.data.Likes;
-import tukano.impl.rest.TukanoRestServer;
 import tukano.pojoModels.CountResult;
 import tukano.pojoModels.Id;
 import utils.DB;
@@ -43,17 +42,15 @@ public class JavaShorts implements Shorts {
 	}
 	
 	private JavaShorts() {}
-	
-	
+
 	@Override
 	public Result<Short> createShort(String userId, String password) {
 		Log.info(() -> format("createShort : userId = %s, pwd = %s\n", userId, password));
 
 		return errorOrResult( okUser(userId, password), user -> {
 
-			var uuid = UUID.randomUUID();
-			var shortId = format("%s+%s", userId, uuid);
-			var blobUrl = uuid.toString();
+			var shortId = format("%s+%s", userId, UUID.randomUUID());
+			var blobUrl = shortId;
 			var shrt = new Short(shortId, userId, blobUrl);
 
 			return errorOrValue(cosmosDBLayerForShorts.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
@@ -75,24 +72,39 @@ public class JavaShorts implements Shorts {
 		return errorOrValue( cosmosDBLayerForShorts.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( results.value()));
 	}
 
-	//todo change to cosmo delete
+	public Result<Short> getShortWithoutToken(String shortId) {
+		Log.info(() -> format("getShort : shortId = %s\n", shortId));
+
+		if( shortId == null )
+			return error(BAD_REQUEST);
+
+		return errorOrValue( cosmosDBLayerForShorts.getOne(shortId, Short.class), shrt -> shrt);
+	}
+
 	@Override
 	public Result<Void> deleteShort(String shortId, String password) {
 		Log.info(() -> format("deleteShort : shortId = %s, pwd = %s\n", shortId, password));
 		
-		return errorOrResult( getShort(shortId), shrt -> {
-			
-			return errorOrResult( okUser( shrt.getOwnerId(), password), user -> {
-				return DB.transaction( hibernate -> {
+		return errorOrResult( getShortWithoutToken(shortId), shrt -> {
 
-					hibernate.remove( shrt);
-					
-					var query = format("DELETE Likes l WHERE l.shortId = '%s'", shortId);
-					hibernate.createNativeQuery( query, Likes.class).executeUpdate();
-					
-					JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get() );
-				});
-			});	
+			return errorOrResult( okUser( shrt.getOwnerId(), password), user -> {
+
+				String query = format("SELECT * FROM likes l WHERE l.shortId = '%s'", shortId);
+				Result<List<Likes>> likesResult = cosmosDBLayerForLikes.query(Likes.class, query);
+
+				if (likesResult.isOK()) {
+					for (Likes like : likesResult.value()) {
+						cosmosDBLayerForLikes.deleteOneWithVoid(like);
+					}
+				}
+				else {
+					return  new ErrorResult<>(Result.ErrorCode.INTERNAL_ERROR);
+				}
+
+				JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get(shrt.getBlobUrl()));
+
+				return cosmosDBLayerForShorts.deleteOneWithVoid(shrt);
+			});
 		});
 	}
 
@@ -134,7 +146,7 @@ public class JavaShorts implements Shorts {
 
 		return errorOrResult( okUser(userId1, password), user -> {
 			var f = new Following( userId1 +"+" +userId2,userId1, userId2);
-			return errorOrVoid(  okUser(userId2), isFollowing ? cosmosDBLayerForFollowing.insertOne( f ) : cosmosDBLayerForFollowing.deleteOne( f ));
+			return errorOrVoid(  okUser(userId2), isFollowing ? cosmosDBLayerForFollowing.insertOne( f ) : cosmosDBLayerForFollowing.deleteOneWithVoid( f ));
 		});			
 	}
 
@@ -156,7 +168,7 @@ public class JavaShorts implements Shorts {
 		
 		return errorOrResult( getShort(shortId), shrt -> {
 			var l = new Likes(userId, shortId, shrt.getOwnerId());
-			return errorOrVoid( okUser( userId, password), isLiked ? cosmosDBLayerForLikes.insertOne( l ) : cosmosDBLayerForLikes.deleteOne( l ));
+			return errorOrVoid( okUser( userId, password), isLiked ? cosmosDBLayerForLikes.insertOne( l ) : cosmosDBLayerForLikes.deleteOneWithVoid( l ));
 		});
 	}
 
@@ -219,30 +231,46 @@ public class JavaShorts implements Shorts {
 			return error( res.error() );
 	}
 
-
-	//todo: change to cosmoDB
 	@Override
 	public Result<Void> deleteAllShorts(String userId, String password, String token) {
 		Log.info(() -> format("deleteAllShorts : userId = %s, password = %s, token = %s\n", userId, password, token));
 
-		if( ! Token.isValid( token, userId ) )
-			return error(FORBIDDEN);
-		
-		return DB.transaction( (hibernate) -> {
-						
-			//delete shorts
-			var query1 = format("DELETE Short s WHERE s.ownerId = '%s'", userId);		
-			hibernate.createQuery(query1, Short.class).executeUpdate();
-			
-			//delete follows
-			var query2 = format("DELETE Following f WHERE f.follower = '%s' OR f.followee = '%s'", userId, userId);		
-			hibernate.createQuery(query2, Following.class).executeUpdate();
-			
-			//delete likes
-			var query3 = format("DELETE Likes l WHERE l.ownerId = '%s' OR l.userId = '%s'", userId, userId);		
-			hibernate.createQuery(query3, Likes.class).executeUpdate();
-			
-		});
+		var shortQuery = String.format("SELECT * FROM shorts s WHERE s.ownerId = '%s'", userId);
+		var shortsQueryResult = cosmosDBLayerForShorts.query(Short.class, shortQuery);
+		if (!shortsQueryResult.isOK()) {
+			return new ErrorResult<>(shortsQueryResult.error());
+		}
+		List<String> shortsList = transformResult(shortsQueryResult, Short::getId).value();
+
+		String shortIds = "";
+		if (!shortsList.isEmpty()) {
+			shortIds = shortsList.stream()
+					.map(id -> "'" + id + "'")
+					.collect(Collectors.joining(","));
+		}
+
+		String query = format("SELECT * FROM likes l WHERE l.shortId IN (%s)", shortIds);
+		Result<List<Likes>> likesResult = cosmosDBLayerForLikes.query(Likes.class, query);
+		if (!likesResult.isOK()) {
+			return new ErrorResult<>(likesResult.error());
+		}
+
+		for (Likes likeItem : likesResult.value()) {
+			Result<Void> deleteResult = cosmosDBLayerForLikes.deleteOneWithVoid(likeItem);
+			if (!deleteResult.isOK()) {
+				return new ErrorResult<>(deleteResult.error());
+			}
+		}
+		for (Short shortItem : shortsQueryResult.value()) {
+			Result<Void> deleteBlobResult = JavaBlobs.getInstance().delete(shortItem.getBlobUrl(), Token.get(shortItem.getBlobUrl()));
+			Result<Void> deleteShortResult = cosmosDBLayerForShorts.deleteOneWithVoid(shortItem);
+
+			if (!deleteShortResult.isOK() || !deleteBlobResult.isOK()) {
+				return new ErrorResult<>(deleteShortResult.error());
+			}
+		}
+
+		return ok();
 	}
 	
 }
