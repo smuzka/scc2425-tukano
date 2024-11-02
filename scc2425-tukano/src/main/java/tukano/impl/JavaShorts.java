@@ -7,7 +7,6 @@ import static tukano.api.Result.errorOrValue;
 import static tukano.api.Result.errorOrVoid;
 import static tukano.api.Result.ok;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
-import static tukano.api.Result.ErrorCode.FORBIDDEN;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,9 +23,10 @@ import tukano.impl.data.Following;
 import tukano.impl.data.Likes;
 import tukano.pojoModels.CountResult;
 import tukano.pojoModels.Id;
-import utils.DB;
 
 public class JavaShorts implements Shorts {
+
+	private final static String REDIS_SHORTS = "shorts:";
 
 	private static Logger Log = Logger.getLogger(JavaShorts.class.getName());
 	CosmosDBLayer cosmosDBLayerForShorts = new CosmosDBLayer("shorts");
@@ -53,7 +53,13 @@ public class JavaShorts implements Shorts {
 			var blobUrl = shortId;
 			var shrt = new Short(shortId, userId, blobUrl);
 
-			return errorOrValue(cosmosDBLayerForShorts.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
+			Result<Short> result = errorOrValue(cosmosDBLayerForShorts.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
+
+			if (result.isOK()) {
+				RedisJedisPool.addToCache(REDIS_SHORTS + shortId, shrt);
+			}
+
+			return result;
 		});
 	}
 
@@ -64,10 +70,14 @@ public class JavaShorts implements Shorts {
 		if( shortId == null )
 			return error(BAD_REQUEST);
 
-
 		var query = format("SELECT count(1) AS count FROM likes l WHERE l.shortId = '%s'", shortId);
 		var likes = cosmosDBLayerForLikes.query(CountResult.class, query);
 		var results = transformSingleResult(likes, CountResult::getCount);
+
+		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
+		if (CacheShort != null) {
+			return ok(CacheShort.copyWithLikes_And_Token( results.value()));
+		}
 
 		return errorOrValue( cosmosDBLayerForShorts.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( results.value()));
 	}
@@ -103,7 +113,12 @@ public class JavaShorts implements Shorts {
 
 				JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get(shrt.getBlobUrl()));
 
-				return cosmosDBLayerForShorts.deleteOneWithVoid(shrt);
+				Result<Void> removingShortResult = cosmosDBLayerForShorts.deleteOneWithVoid(shrt);
+				if (removingShortResult.isOK()) {
+					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortId);
+				}
+
+				return removingShortResult;
 			});
 		});
 	}
@@ -116,6 +131,8 @@ public class JavaShorts implements Shorts {
 
 		var shortIds = cosmosDBLayerForShorts.query( Id.class, query);
 		Result <List<String>> result = transformResult(shortIds, Id::getId);
+
+//		Don't get cached short, because we need to be sure we got all of them from database
 
 		return errorOrValue( okUser(userId, pwd), result);
 	}
@@ -264,6 +281,10 @@ public class JavaShorts implements Shorts {
 		for (Short shortItem : shortsQueryResult.value()) {
 			Result<Void> deleteBlobResult = JavaBlobs.getInstance().delete(shortItem.getBlobUrl(), Token.get(shortItem.getBlobUrl()));
 			Result<Void> deleteShortResult = cosmosDBLayerForShorts.deleteOneWithVoid(shortItem);
+
+			if(deleteBlobResult.isOK()) {
+				RedisJedisPool.removeFromCache(REDIS_SHORTS + shortItem.getId());
+			}
 
 			if (!deleteShortResult.isOK() || !deleteBlobResult.isOK()) {
 				return new ErrorResult<>(deleteShortResult.error());
