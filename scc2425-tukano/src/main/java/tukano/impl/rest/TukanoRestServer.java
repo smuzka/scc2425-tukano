@@ -9,6 +9,7 @@ import org.glassfish.jersey.server.ResourceConfig;
 import tukano.impl.Token;
 import utils.Args;
 import utils.IP;
+import utils.PropsEnv;
 
 
 public class TukanoRestServer {
@@ -39,7 +40,9 @@ public class TukanoRestServer {
 		config.register(RestShortsResource.class);
 		
 		JdkHttpServerFactory.createHttpServer( URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
-		
+
+		PropsEnv.load("azurekeys-region.props");
+
 		Log.info(String.format("Tukano Server ready @ %s\n",  serverURI));
 	}
 	

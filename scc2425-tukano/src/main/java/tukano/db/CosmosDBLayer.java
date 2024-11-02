@@ -6,6 +6,7 @@ import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
 import tukano.api.Result;
 import tukano.api.Result.ErrorCode;
+import utils.PropsEnv;
 
 
 import java.util.List;
@@ -13,9 +14,10 @@ import java.util.function.Supplier;
 
 
 public class CosmosDBLayer {
-	private static final String DB_KEY = "...";
-	private static final String CONNECTION_URL = "...";
-	private static final String DB_NAME = "...";
+	private static String DB_KEY;
+	private static String CONNECTION_URL;
+	private static String DB_NAME;
+
 	private String containerName;
 	
 	private CosmosClient client;
@@ -23,6 +25,10 @@ public class CosmosDBLayer {
 	private CosmosContainer container;
 	
 	public CosmosDBLayer(String containerName) {
+		DB_KEY = PropsEnv.get("COSMOSDB_KEY", "");
+		CONNECTION_URL = PropsEnv.get("COSMOSDB_URL", "");
+		DB_NAME = PropsEnv.get("COSMOSDB_DATABASE", "");
+
 		CosmosClient client = new CosmosClientBuilder()
 				.endpoint(CONNECTION_URL)
 				.key(DB_KEY)

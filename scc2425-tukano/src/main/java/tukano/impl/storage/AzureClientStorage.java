@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 
 import tukano.api.Result;
 import utils.CSVLogger;
+import utils.PropsEnv;
 
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.INTERNAL_ERROR;
@@ -19,9 +20,12 @@ public class AzureClientStorage implements BlobStorage {
 
     private static AzureClientStorage instance;
     private BlobContainerClient containerClient;
+    private String storageConnectionString;
     CSVLogger csvLogger = new CSVLogger();
 
     public AzureClientStorage() {
+        storageConnectionString = PropsEnv.get("BLOB_STORAGE_CONNECTION", "");
+
         containerClient = new BlobContainerClientBuilder()
                 .connectionString(storageConnectionString)
                 .containerName("shorts")
