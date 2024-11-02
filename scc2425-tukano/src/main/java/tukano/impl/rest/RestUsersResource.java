@@ -3,10 +3,13 @@ package tukano.impl.rest;
 import java.util.List;
 
 import jakarta.inject.Singleton;
+import redis.clients.jedis.Jedis;
 import tukano.api.User;
 import tukano.api.Users;
 import tukano.api.rest.RestUsers;
 import tukano.impl.JavaUsers;
+import tukano.impl.RedisJedisPool;
+import utils.JSON;
 
 @Singleton
 public class RestUsersResource extends RestResource implements RestUsers {
@@ -15,7 +18,7 @@ public class RestUsersResource extends RestResource implements RestUsers {
 	public RestUsersResource() {
 		this.impl = JavaUsers.getInstance();
 	}
-	
+
 	@Override
 	public String createUser(User user) {
 		return super.resultOrThrow( impl.createUser( user));
@@ -25,7 +28,7 @@ public class RestUsersResource extends RestResource implements RestUsers {
 	public User getUser(String name, String pwd) {
 		return super.resultOrThrow( impl.getUser(name, pwd));
 	}
-	
+
 	@Override
 	public User updateUser(String name, String pwd, User user) {
 		return super.resultOrThrow( impl.updateUser(name, pwd, user));

@@ -9,17 +9,17 @@ import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
 
 import java.util.List;
-import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
 import tukano.db.CosmosDBLayer;
-import utils.DB;
 
 public class JavaUsers implements Users {
-	
+
+	private final static String REDIS_USERS = "users:";
+
 	private static Logger Log = Logger.getLogger(JavaUsers.class.getName());
 	private static Users instance;
 	private final CosmosDBLayer cosmosDBLayer = new CosmosDBLayer("users");
@@ -39,7 +39,12 @@ public class JavaUsers implements Users {
 		if( badUserInfo( user ) )
 			return error(BAD_REQUEST);
 
-		return errorOrValue( cosmosDBLayer.insertOne(user), user.getId() );
+		Result<String> result = errorOrValue( cosmosDBLayer.insertOne(user), user.getId() );
+		if (result.isOK()) {
+			RedisJedisPool.addToCache(REDIS_USERS + user.getId(), user);
+		}
+
+		return result;
 	}
 
 	@Override
@@ -48,6 +53,11 @@ public class JavaUsers implements Users {
 
 		if (userId == null)
 			return error(BAD_REQUEST);
+
+		User CacheUser = RedisJedisPool.getFromCache(userId, User.class);
+		if (CacheUser != null) {
+			return ok(CacheUser);
+		}
 
 		return validatedUserOrError( cosmosDBLayer.getOne( userId, User.class), pwd);
 	}
@@ -69,7 +79,13 @@ public class JavaUsers implements Users {
 		if (badUpdateUserInfo(userId, pwd, other))
 			return error(BAD_REQUEST);
 
-		return errorOrResult( validatedUserOrError(cosmosDBLayer.getOne( userId, User.class), pwd), user -> cosmosDBLayer.updateOne( user.updateFrom(other)));
+		Result<User> result = errorOrResult( validatedUserOrError(cosmosDBLayer.getOne( userId, User.class), pwd), user -> cosmosDBLayer.updateOne( user.updateFrom(other)));
+
+		if (result.isOK()) {
+			RedisJedisPool.addToCache(REDIS_USERS + userId, result.value());
+		}
+
+		return result;
 	}
 
 	//todo: add deltion of shorts and blobs
@@ -88,7 +104,12 @@ public class JavaUsers implements Users {
 //				JavaBlobs.getInstance().deleteAllBlobs(userId, Token.get(userId));
 //			}).start();
 
-			return (Result<User>) cosmosDBLayer.deleteOne( user);
+			Result<User> result = errorOrValue( cosmosDBLayer.deleteOne( user), user);
+			if (result.isOK()) {
+				RedisJedisPool.removeFromCache(REDIS_USERS + userId);
+			}
+
+			return result;
 		});
 	}
 
