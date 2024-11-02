@@ -19,7 +19,7 @@ public class AzureClientStorage implements BlobStorage {
 
     private static AzureClientStorage instance;
     private BlobContainerClient containerClient;
-    private final String storageConnectionString = "...";
+    CSVLogger csvLogger = new CSVLogger();
 
     public AzureClientStorage() {
         containerClient = new BlobContainerClientBuilder()
