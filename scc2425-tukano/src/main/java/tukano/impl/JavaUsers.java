@@ -52,7 +52,7 @@ public class JavaUsers implements Users {
 		if (userId == null)
 			return error(BAD_REQUEST);
 
-		User CacheUser = RedisJedisPool.getFromCache(userId, User.class);
+		User CacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
 		if (CacheUser != null) {
 			return ok(CacheUser);
 		}
@@ -108,12 +108,16 @@ public class JavaUsers implements Users {
 	public Result<List<User>> searchUsers(String pattern) {
 		Log.info( () -> format("searchUsers : patterns = %s\n", pattern));
 
-		var query = format("SELECT * FROM User u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
+		var query = format("SELECT * FROM users u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
 		var hits = cosmosDBLayer.query(User.class, query)
 				.value()
 				.stream()
 				.map(User::copyWithoutPassword)
 				.toList();
+
+//		Getting cached users is obsolete since we need to get all of them from database anyway
+//		List<User> cacheUsers = RedisJedisPool.getByKeyPatternFromCache(REDIS_USERS + format("*%s*", pattern.toUpperCase()), User.class);
+//		List<User> cacheUsersWithoutPwd = cacheUsers.stream().map(User::copyWithoutPassword).toList();
 
 		return ok(hits);
 	}
