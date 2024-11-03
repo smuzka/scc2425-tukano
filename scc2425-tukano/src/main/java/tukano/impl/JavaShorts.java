@@ -48,6 +48,7 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<Short> createShort(String userId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("createShort : userId = %s, pwd = %s\n", userId, password));
 
         return errorOrResult( okUser(userId, password), user -> {
@@ -57,6 +58,7 @@ public class JavaShorts implements Shorts {
 			var shrt = new Short(shortId, userId, blobUrl);
 
 			Result<Short> cosmosResult = errorOrValue(cosmosDBLayerForShorts.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
+			csvLogger.logToCSV("create short", System.currentTimeMillis() - startTime);
 			if (cosmosResult.isOK()) {
 				RedisJedisPool.addToCache(REDIS_SHORTS + shortId, shrt);
 			}
@@ -102,6 +104,7 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<Void> deleteShort(String shortId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("deleteShort : shortId = %s, pwd = %s\n", shortId, password));
 
 		return errorOrResult( getShortWithoutToken(shortId), shrt -> {
@@ -123,6 +126,8 @@ public class JavaShorts implements Shorts {
 				JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get(shrt.getBlobUrl()));
 
 				Result<Void> removingShortResult = cosmosDBLayerForShorts.deleteOneWithVoid(shrt);
+				csvLogger.logToCSV("delete short", System.currentTimeMillis() - startTime);
+
 				if (removingShortResult.isOK()) {
 					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortId);
 				}
@@ -134,12 +139,13 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<List<String>> getShorts(String userId, String pwd) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("getShorts : userId = %s\n", userId));
-
 
 		var cosmosQuery = format("SELECT s.id FROM shorts s WHERE s.ownerId = '%s'", userId);
 		var shortIdsCosmos = errorOrValue( okUser(userId), cosmosDBLayerForShorts.query( Id.class, cosmosQuery));
 		Result <List<String>> result = transformResult(shortIdsCosmos, Id::getId);
+		csvLogger.logToCSV("get all shorts", System.currentTimeMillis() - startTime);
 
 		return errorOrValue( okUser(userId, pwd), result);
 	}
@@ -211,6 +217,7 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<List<String>> getFeed(String userId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("getFeed : userId = %s, pwd = %s\n", userId, password));
 
 		var ownerShortsResult = cosmosDBLayerForShorts.query(Short.class, String.format("SELECT s.id, s.timestamp FROM shorts s WHERE s.ownerId = '%s'", userId));
@@ -232,6 +239,7 @@ public class JavaShorts implements Shorts {
 		List<String> shortIds = combinedResults.stream()
 				.map(Short::getId)
 				.collect(Collectors.toList());
+		csvLogger.logToCSV("Get feed", System.currentTimeMillis() - startTime);
 
 		return errorOrValue( okUser( userId, password), shortIds);
 	}
@@ -255,6 +263,7 @@ public class JavaShorts implements Shorts {
 
 	@Override
 	public Result<Void> deleteAllShorts(String userId, String password, String token) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("deleteAllShorts : userId = %s, password = %s, token = %s\n", userId, password, token));
 
 		var shortQuery = String.format("SELECT * FROM shorts s WHERE s.ownerId = '%s'", userId);
@@ -295,7 +304,7 @@ public class JavaShorts implements Shorts {
 				return new ErrorResult<>(deleteShortResult.error());
 			}
 		}
-
+		csvLogger.logToCSV("delete all shorts", System.currentTimeMillis() - startTime);
 		return ok();
 	}
 	

@@ -37,6 +37,7 @@ public class JavaShortsForSQL implements Shorts {
 
 	@Override
 	public Result<Short> createShort(String userId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("createShort : userId = %s, pwd = %s\n", userId, password));
 
         return errorOrResult( okUser(userId, password), user -> {
@@ -46,7 +47,7 @@ public class JavaShortsForSQL implements Shorts {
 			var shrt = new Short(shortId, userId, blobUrl);
 
 			Result<Short> result = errorOrValue(SqlDB.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
-
+			csvLogger.logToCSV("create short", System.currentTimeMillis() - startTime);
 			if (result.isOK()) {
 				RedisJedisPool.addToCache(REDIS_SHORTS + shortId, shrt);
 			}
@@ -65,26 +66,21 @@ public class JavaShortsForSQL implements Shorts {
 		var sqlQuery = format("SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
 		var sqlLikes = SqlDB.sql(sqlQuery, Long.class);
 
-		Short cacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
-		if (cacheShort != null) {
+		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
+		if (CacheShort != null) {
 			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
-			return ok(cacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
+			return ok(CacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
 		}
 
-		return errorOrValue( SqlDB.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( sqlLikes.get(0)));
-	}
+		Result<Short> result = errorOrValue( SqlDB.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( sqlLikes.get(0)));
+		csvLogger.logToCSV("Get short without redis", System.currentTimeMillis() - startTime);
 
-	public Result<Short> getShortWithoutToken(String shortId) {
-		Log.info(() -> format("getShort : shortId = %s\n", shortId));
-
-		if( shortId == null )
-			return error(BAD_REQUEST);
-
-		return errorOrValue( SqlDB.getOne(shortId, Short.class), shrt -> shrt);
+		return result;
 	}
 
 	@Override
 	public Result<Void> deleteShort(String shortId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("deleteShort : shortId = %s, pwd = %s\n", shortId, password));
 
 		return errorOrResult( getShort(shortId), shrt -> {
@@ -92,8 +88,9 @@ public class JavaShortsForSQL implements Shorts {
 				return SqlDB.transaction( hibernate -> {
 					hibernate.remove( shrt);
 					var query = format("DELETE FROM Likes WHERE shortId = '%s'", shortId);
-					hibernate.createNativeQuery( query, Likes.class).executeUpdate();
 					JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get(shrt.getBlobUrl()) );
+					hibernate.createNativeQuery( query, Likes.class).executeUpdate();
+					csvLogger.logToCSV("delete short", System.currentTimeMillis() - startTime);
 					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortId);
 				});
 			});
@@ -102,9 +99,12 @@ public class JavaShortsForSQL implements Shorts {
 
 	@Override
 	public Result<List<String>> getShorts(String userId, String pwd) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("getShorts : userId = %s\n", userId));
 		var sqlQuery = format("SELECT s.id FROM Short s WHERE s.ownerId = '%s'", userId);
-		return errorOrValue( okUser(userId, pwd), SqlDB.sql( sqlQuery, String.class));
+		var result = errorOrValue( okUser(userId, pwd), SqlDB.sql( sqlQuery, String.class));
+		csvLogger.logToCSV("get all shorts", System.currentTimeMillis() - startTime);
+		return result;
 	}
 
 	@Override
@@ -147,8 +147,8 @@ public class JavaShortsForSQL implements Shorts {
 
 	@Override
 	public Result<List<String>> getFeed(String userId, String password) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("getFeed : userId = %s, pwd = %s\n", userId, password));
-
 
 		final var QUERY_FMT = """
 				SELECT s.id, s.timestamp FROM Short s WHERE	s.ownerId = '%s'				
@@ -157,7 +157,11 @@ public class JavaShortsForSQL implements Shorts {
 					WHERE 
 						f.followee = s.ownerId AND f.follower = '%s' 
 				ORDER BY s.timestamp DESC""";
-		return errorOrValue( okUser( userId, password), SqlDB.sql( format(QUERY_FMT, userId, userId), String.class));
+
+		var result = SqlDB.sql( format(QUERY_FMT, userId, userId), String.class);
+		csvLogger.logToCSV("Get feed", System.currentTimeMillis() - startTime);
+
+		return errorOrValue( okUser( userId, password), result );
 	}
 		
 	protected Result<User> okUser( String userId, String pwd) {
@@ -179,6 +183,7 @@ public class JavaShortsForSQL implements Shorts {
 
 	@Override
 	public Result<Void> deleteAllShorts(String userId, String password, String token) {
+		long startTime = System.currentTimeMillis();
 		Log.info(() -> format("deleteAllShorts : userId = %s, password = %s, token = %s\n", userId, password, token));
 
 		return SqlDB.transaction( (hibernate) -> {
@@ -200,7 +205,7 @@ public class JavaShortsForSQL implements Shorts {
 			//delete likes
 			var query3 = format("DELETE FROM Likes WHERE ownerId = '%s' OR userId = '%s'", userId, userId);
 			hibernate.createNativeQuery(query3, Likes.class).executeUpdate();
-
+			csvLogger.logToCSV("delete all shorts", System.currentTimeMillis() - startTime);
 		});
 	}
 	
