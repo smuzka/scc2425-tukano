@@ -61,10 +61,10 @@ public class JavaUsersForSQL implements Users {
 		if (userId == null)
 			return error(BAD_REQUEST);
 
-		User CacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
-		if (CacheUser != null) {
+		User cacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
+		if (cacheUser != null) {
 			csvLogger.logToCSV("Get user with redis", System.currentTimeMillis() - startTime);
-			return ok(CacheUser);
+			return cacheUser.getPwd().equals( pwd ) ? ok(cacheUser) : error(FORBIDDEN);
 		}
 
 		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);

@@ -76,13 +76,13 @@ public class JavaShorts implements Shorts {
 		var cosmosQuery = format("SELECT count(1) AS count FROM likes l WHERE l.shortId = '%s'", shortId);
 
 
-		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
+		Short cacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
 		var likes = cosmosDBLayerForLikes.query(CountResult.class, cosmosQuery);
 		var result= transformSingleResult(likes, CountResult::getCount);
-		if (CacheShort != null) {
+		if (cacheShort != null) {
 
 			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
-			return ok(CacheShort.copyWithLikes_And_Token( result.value()));
+			return ok(cacheShort.copyWithLikes_And_Token( result.value()));
 		}
 
 		Result<Short> cosmosResult = errorOrValue( cosmosDBLayerForShorts.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( result.value()));

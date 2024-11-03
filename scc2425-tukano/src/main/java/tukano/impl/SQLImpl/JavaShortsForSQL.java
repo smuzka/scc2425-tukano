@@ -65,10 +65,10 @@ public class JavaShortsForSQL implements Shorts {
 		var sqlQuery = format("SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
 		var sqlLikes = SqlDB.sql(sqlQuery, Long.class);
 
-		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
-		if (CacheShort != null) {
+		Short cacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
+		if (cacheShort != null) {
 			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
-			return ok(CacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
+			return ok(cacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
 		}
 
 		return errorOrValue( SqlDB.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( sqlLikes.get(0)));
