@@ -1,5 +1,6 @@
 package tukano.impl;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -8,6 +9,7 @@ import tukano.api.User;
 import tukano.api.Users;
 import tukano.db.CosmosDBLayer;
 import utils.CSVLogger;
+import utils.SqlDB;
 
 import static java.lang.String.format;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
@@ -24,7 +26,7 @@ public class JavaUsers implements Users {
 	CSVLogger csvLogger = new CSVLogger();
 	private static Logger Log = Logger.getLogger(JavaUsers.class.getName());
 	private static Users instance;
-	private final CosmosDBLayer cosmosDBLayer = new CosmosDBLayer("users");
+	private final CosmosDBLayer cosmosDBLayerForUsers = new CosmosDBLayer("users");
 
 	synchronized public static Users getInstance() {
 		if( instance == null )
@@ -41,12 +43,23 @@ public class JavaUsers implements Users {
 		if( badUserInfo( user ) )
 			return error(BAD_REQUEST);
 
-		Result<String> result = errorOrValue( cosmosDBLayer.insertOne(user), user.getId() );
-		if (result.isOK()) {
+        Result<String> sqlResult = errorOrValue( SqlDB.insertOne(user), user.getId() );
+		if (!sqlResult.isOK()) {
+			Log.warning("Couldn't write to SQL DB");
+			return errorOrValue(sqlResult, user.getId());
+		}
+
+		Result<String> cosmosResult = errorOrValue( cosmosDBLayerForUsers.insertOne(user), user.getId() );
+		if (cosmosResult.isOK()) {
 			RedisJedisPool.addToCache(REDIS_USERS + user.getId(), user);
 		}
 
-		return result;
+		if(!sqlResult.value().equals(cosmosResult.value())){
+			Log.warning("Results from cosmos and sql database doesn't match");
+			return error(Result.ErrorCode.INTERNAL_ERROR);
+		}
+
+		return cosmosResult;
 	}
 
 	@Override
@@ -64,8 +77,21 @@ public class JavaUsers implements Users {
 			return ok(CacheUser);
 		}
 
+		Result<User> sqlResult = validatedUserOrError(SqlDB.getOne( userId, User.class), pwd);
+		if (!sqlResult.isOK()) {
+			Log.warning("Couldn't get from SQL DB");
+			return errorOrValue(sqlResult, sqlResult.value());
+		}
+
+		Result <User> cosmosResult = validatedUserOrError( cosmosDBLayerForUsers.getOne( userId, User.class), pwd);
+
+		if(!sqlResult.value().equals(cosmosResult.value())){
+			Log.warning("Results from cosmos and sql database doesn't match");
+			return error(Result.ErrorCode.INTERNAL_ERROR);
+		}
+
 		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
-		return validatedUserOrError( cosmosDBLayer.getOne( userId, User.class), pwd);
+		return cosmosResult;
 	}
 
 	@Override
@@ -75,35 +101,50 @@ public class JavaUsers implements Users {
 		if (userId == null)
 			return error(BAD_REQUEST);
 
-		return cosmosDBLayer.getOne( userId, User.class);
+		return cosmosDBLayerForUsers.getOne( userId, User.class);
 	}
 
 	@Override
 	public Result<User> updateUser(String userId, String pwd, User other) {
 		Log.info(() -> format("updateUser : userId = %s, pwd = %s, user: %s\n", userId, pwd, other));
+		long startTime = System.currentTimeMillis();
 
 		if (badUpdateUserInfo(userId, pwd, other))
 			return error(BAD_REQUEST);
 
-		Result<User> result = errorOrResult( validatedUserOrError(cosmosDBLayer.getOne( userId, User.class), pwd), user -> cosmosDBLayer.updateOne( user.updateFrom(other)));
 
-		if (result.isOK()) {
-			RedisJedisPool.addToCache(REDIS_USERS + userId, result.value());
+		Result<User> sqlResult = validatedUserOrError(SqlDB.updateOne( other), pwd);
+		if (!sqlResult.isOK()) {
+			Log.warning("Couldn't write to SQL DB");
+			return errorOrValue(sqlResult, sqlResult.value());
 		}
 
-		return result;
+		Result <User> cosmosResult = validatedUserOrError( cosmosDBLayerForUsers.updateOne( other), pwd);
+
+		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
+
+		if (cosmosResult.isOK()) {
+			RedisJedisPool.addToCache(REDIS_USERS + userId, cosmosResult.value());
+		}
+
+		if(!sqlResult.value().equals(cosmosResult.value())){
+			Log.warning("Results from cosmos and sql database doesn't match");
+			return error(Result.ErrorCode.INTERNAL_ERROR);
+		}
+		return cosmosResult;
 	}
 
+	//todo: add sql deletion
 	@Override
 	public Result<User> deleteUser(String userId, String pwd) {
 		Log.info(() -> format("deleteUser : userId = %s, pwd = %s\n", userId, pwd));
 
 		if (userId == null || pwd == null )
 			return error(BAD_REQUEST);
-		return  errorOrResult( validatedUserOrError(cosmosDBLayer.getOne( userId, User.class), pwd), user -> {
+		return  errorOrResult( validatedUserOrError(cosmosDBLayerForUsers.getOne( userId, User.class), pwd), user -> {
 			JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
 
-            Result<User> result = cosmosDBLayer.deleteUser(user);
+            Result<User> result = cosmosDBLayerForUsers.deleteUser(user);
             if (result.isOK()) {
                 RedisJedisPool.removeFromCache(REDIS_USERS + userId);
             }
@@ -116,8 +157,14 @@ public class JavaUsers implements Users {
 	public Result<List<User>> searchUsers(String pattern) {
 		Log.info( () -> format("searchUsers : patterns = %s\n", pattern));
 
+		var sqlQuery = format("SELECT * FROM AppUser u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
+		var sqlResult = SqlDB.sql(sqlQuery, User.class)
+				.stream()
+				.map(User::copyWithoutPassword)
+				.toList();
+
 		var query = format("SELECT * FROM users u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
-		var hits = cosmosDBLayer.query(User.class, query)
+		var cosmosResult = cosmosDBLayerForUsers.query(User.class, query)
 				.value()
 				.stream()
 				.map(User::copyWithoutPassword)
@@ -127,7 +174,12 @@ public class JavaUsers implements Users {
 //		List<User> cacheUsers = RedisJedisPool.getByKeyPatternFromCache(REDIS_USERS + format("*%s*", pattern.toUpperCase()), User.class);
 //		List<User> cacheUsersWithoutPwd = cacheUsers.stream().map(User::copyWithoutPassword).toList();
 
-		return ok(hits);
+		if(!new HashSet<>(sqlResult).equals(new HashSet<>(cosmosResult))){
+			Log.warning("Results from cosmos and sql database doesn't match");
+			return error(Result.ErrorCode.INTERNAL_ERROR);
+		}
+
+		return ok(cosmosResult);
 	}
 
 	
