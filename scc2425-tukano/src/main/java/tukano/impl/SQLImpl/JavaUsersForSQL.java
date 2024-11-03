@@ -1,39 +1,41 @@
-package tukano.impl;
+package tukano.impl.SQLImpl;
 
-import java.util.List;
-import java.util.logging.Logger;
-
+import com.microsoft.sqlserver.jdbc.SQLServerDriver;
+import com.microsoft.sqlserver.jdbc.SQLServerException;
 import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
-import tukano.db.CosmosDBLayer;
+import tukano.impl.RedisJedisPool;
+import tukano.impl.Token;
 import utils.CSVLogger;
+import utils.SqlDB;
+
+import java.sql.Connection;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 import static java.lang.String.format;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
-import static tukano.api.Result.error;
-import static tukano.api.Result.errorOrResult;
-import static tukano.api.Result.errorOrValue;
-import static tukano.api.Result.ok;
+import static tukano.api.Result.*;
 
-public class JavaUsers implements Users {
+public class JavaUsersForSQL implements Users {
 
 	private final static String REDIS_USERS = "users:";
 
 	CSVLogger csvLogger = new CSVLogger();
-	private static Logger Log = Logger.getLogger(JavaUsers.class.getName());
+	private static Logger Log = Logger.getLogger(JavaUsersForSQL.class.getName());
 	private static Users instance;
-	private final CosmosDBLayer cosmosDBLayerForUsers = new CosmosDBLayer("users");
 
 	synchronized public static Users getInstance() {
 		if( instance == null )
-			instance = new JavaUsers();
+			instance = new JavaUsersForSQL();
 		return instance;
 	}
 	
-	private JavaUsers() {
-		System.out.println("==========NOSQLDB SOLUTION FOR USERS============");
+	private JavaUsersForSQL() {
+		System.out.println("==========SQLDB SOLUTION FOR USERS============");
 	}
 	
 	@Override
@@ -43,13 +45,12 @@ public class JavaUsers implements Users {
 		if( badUserInfo( user ) )
 			return error(BAD_REQUEST);
 
-		Result<String> cosmosResult = errorOrValue( cosmosDBLayerForUsers.insertOne(user), user.getId() );
-
-		if (cosmosResult.isOK()) {
+		Result<String> result = errorOrValue( SqlDB.insertOne(user), user.getId());
+		if (result.isOK()) {
 			RedisJedisPool.addToCache(REDIS_USERS + user.getId(), user);
 		}
 
-		return cosmosResult;
+		return result;
 	}
 
 	@Override
@@ -63,12 +64,11 @@ public class JavaUsers implements Users {
 		User CacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
 		if (CacheUser != null) {
 			csvLogger.logToCSV("Get user with redis", System.currentTimeMillis() - startTime);
-
 			return ok(CacheUser);
 		}
 
 		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
-		return validatedUserOrError( cosmosDBLayerForUsers.getOne( userId, User.class), pwd);
+		return validatedUserOrError(SqlDB.getOne( userId, User.class), pwd);
 	}
 
 	@Override
@@ -78,7 +78,7 @@ public class JavaUsers implements Users {
 		if (userId == null)
 			return error(BAD_REQUEST);
 
-		return cosmosDBLayerForUsers.getOne( userId, User.class);
+		return SqlDB.getOne( userId, User.class);
 	}
 
 	@Override
@@ -90,18 +90,16 @@ public class JavaUsers implements Users {
 			return error(BAD_REQUEST);
 
 
-
-		Result <User> cosmosResult = validatedUserOrError( cosmosDBLayerForUsers.updateOne( other), pwd);
-
 		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
 
-		if (cosmosResult.isOK()) {
-			RedisJedisPool.addToCache(REDIS_USERS + userId, cosmosResult.value());
+		Result<User> result = errorOrResult( validatedUserOrError(SqlDB.getOne( userId, User.class), pwd), user -> SqlDB.updateOne( user.updateFrom(other)));
+
+		if (result.isOK()) {
+			RedisJedisPool.addToCache(REDIS_USERS + userId, result.value());
 		}
 
-		return cosmosResult;
+		return result;
 	}
-
 
 	@Override
 	public Result<User> deleteUser(String userId, String pwd) {
@@ -110,15 +108,13 @@ public class JavaUsers implements Users {
 		if (userId == null || pwd == null )
 			return error(BAD_REQUEST);
 
-		return  errorOrResult( validatedUserOrError(cosmosDBLayerForUsers.getOne( userId, User.class), pwd), user -> {
-			JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
+		return errorOrResult( validatedUserOrError(SqlDB.getOne( userId, User.class), pwd), user -> {
+			// Delete user shorts and related info asynchronously in a separate thread
+			Executors.defaultThreadFactory().newThread( () -> {
+				JavaShortsForSQL.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
+			}).start();
 
-            Result<User> result = cosmosDBLayerForUsers.deleteUser(user);
-            if (result.isOK()) {
-                RedisJedisPool.removeFromCache(REDIS_USERS + userId);
-            }
-
-            return  result;
+			return SqlDB.deleteOne( user);
 		});
 	}
 
@@ -126,10 +122,8 @@ public class JavaUsers implements Users {
 	public Result<List<User>> searchUsers(String pattern) {
 		Log.info( () -> format("searchUsers : patterns = %s\n", pattern));
 
-
-		var query = format("SELECT * FROM users u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
-		var cosmosResult = cosmosDBLayerForUsers.query(User.class, query)
-				.value()
+		var sqlQuery = format("SELECT * FROM AppUser u WHERE UPPER(u.id) LIKE '%%%s%%'", pattern.toUpperCase());
+		var sqlResult = SqlDB.sql(sqlQuery, User.class)
 				.stream()
 				.map(User::copyWithoutPassword)
 				.toList();
@@ -138,7 +132,7 @@ public class JavaUsers implements Users {
 //		List<User> cacheUsers = RedisJedisPool.getByKeyPatternFromCache(REDIS_USERS + format("*%s*", pattern.toUpperCase()), User.class);
 //		List<User> cacheUsersWithoutPwd = cacheUsers.stream().map(User::copyWithoutPassword).toList();
 
-		return ok(cosmosResult);
+		return ok(sqlResult);
 	}
 
 	

@@ -34,11 +34,19 @@ public class TukanoRestServer {
 	protected void start() throws Exception {
 	
 		ResourceConfig config = new ResourceConfig();
-		
+
 		config.register(RestBlobsResource.class);
-		config.register(RestUsersResource.class); 
-		config.register(RestShortsResource.class);
-		
+
+		boolean useSQLImpl = false; //changes the db mode from sql to nosql
+		if(useSQLImpl){
+			config.register(RestUsersResourceForSQL.class);
+			config.register(RestShortsResourceForSQL.class);
+		}
+		else{
+			config.register(RestUsersResource.class);
+			config.register(RestShortsResource.class);
+		}
+
 		JdkHttpServerFactory.createHttpServer( URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
 
 		PropsEnv.load("azurekeys-region.props");
