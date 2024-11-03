@@ -64,22 +64,15 @@ public class Likes {
 	}
 
 	@Override
-	public int hashCode() {
-		return Objects.hash(ownerId, shortId, userId);
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Likes likes = (Likes) o;
+		return Objects.equals(id, likes.id) && Objects.equals(userId, likes.userId) && Objects.equals(shortId, likes.shortId) && Objects.equals(ownerId, likes.ownerId);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Likes other = (Likes) obj;
-		return Objects.equals(ownerId, other.ownerId) && Objects.equals(shortId, other.shortId)
-				&& Objects.equals(userId, other.userId);
+	public int hashCode() {
+		return Objects.hash(id, userId, shortId, ownerId);
 	}
-	
-	
 }

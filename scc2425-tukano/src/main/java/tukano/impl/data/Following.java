@@ -48,20 +48,16 @@ public class Following{
 	}
 
 	@Override
-	public int hashCode() {
-		return Objects.hash(followee, follower);
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Following following = (Following) o;
+		return Objects.equals(id, following.id) && Objects.equals(follower, following.follower) && Objects.equals(followee, following.followee);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Following other = (Following) obj;
-		return Objects.equals(followee, other.followee) && Objects.equals(follower, other.follower);
+	public int hashCode() {
+		return Objects.hash(id, follower, followee);
 	}
 
 	@Override

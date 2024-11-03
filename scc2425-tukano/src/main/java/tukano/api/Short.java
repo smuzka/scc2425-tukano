@@ -3,6 +3,7 @@ package tukano.api;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import tukano.impl.Token;
+import java.util.Objects;
 
 /**
  * Represents a Short video uploaded by an user.
@@ -83,8 +84,21 @@ public class Short {
 		return "Short [shortId=" + id + ", ownerId=" + ownerId + ", blobUrl=" + blobUrl + ", timestamp="
 				+ timestamp + ", totalLikes=" + totalLikes + "]";
 	}
-	
-	public Short copyWithLikes_And_Token( long totLikes) {
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Short aShort = (Short) o;
+		return timestamp == aShort.timestamp && totalLikes == aShort.totalLikes && Objects.equals(id, aShort.id) && Objects.equals(ownerId, aShort.ownerId) && Objects.equals(blobUrl, aShort.blobUrl);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, ownerId, blobUrl, timestamp, totalLikes);
+	}
+
+	public Short copyWithLikes_And_Token(long totLikes) {
 		var urlWithToken = String.format("%s?token=%s", blobUrl, Token.get(blobUrl));
 		return new Short( id, ownerId, urlWithToken, timestamp, (int)totLikes);
 	}	
