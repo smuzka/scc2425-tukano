@@ -27,6 +27,11 @@ public class Token {
 		return String.format("%s%s%s", timestamp, DELIMITER, signature);
 	}
 
+	public static String get(String id, long timestamp ) {
+		var signature = Hash.of(id, timestamp, secret);
+		return String.format("%s%s%s", timestamp, DELIMITER, signature);
+	}
+
 	public static boolean isValid(String tokenStr, String id) {
 		try {
 			var bits = tokenStr.split(DELIMITER);

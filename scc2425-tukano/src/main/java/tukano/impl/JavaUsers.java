@@ -2,6 +2,7 @@ package tukano.impl;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import tukano.api.Result;
@@ -46,7 +47,7 @@ public class JavaUsers implements Users {
         Result<String> sqlResult = errorOrValue( SqlDB.insertOne(user), user.getId() );
 		if (!sqlResult.isOK()) {
 			Log.warning("Couldn't write to SQL DB");
-			return errorOrValue(sqlResult, user.getId());
+			return errorOrValue(sqlResult, sqlResult);
 		}
 
 		Result<String> cosmosResult = errorOrValue( cosmosDBLayerForUsers.insertOne(user), user.getId() );
@@ -141,6 +142,19 @@ public class JavaUsers implements Users {
 
 		if (userId == null || pwd == null )
 			return error(BAD_REQUEST);
+
+		//return for sql
+				errorOrResult( validatedUserOrError(SqlDB.getOne( userId, User.class), pwd), user -> {
+
+			// Delete user shorts and related info asynchronously in a separate thread
+			Executors.defaultThreadFactory().newThread( () -> {
+				JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
+			}).start();
+
+			return SqlDB.deleteOne( user);
+		});
+
+
 		return  errorOrResult( validatedUserOrError(cosmosDBLayerForUsers.getOne( userId, User.class), pwd), user -> {
 			JavaShorts.getInstance().deleteAllShorts(userId, pwd, Token.get(userId));
 

@@ -3,6 +3,7 @@ package tukano.api;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import tukano.impl.Token;
+
 import java.util.Objects;
 
 /**
@@ -100,6 +101,11 @@ public class Short {
 
 	public Short copyWithLikes_And_Token(long totLikes) {
 		var urlWithToken = String.format("%s?token=%s", blobUrl, Token.get(blobUrl));
+		return new Short( id, ownerId, urlWithToken, timestamp, (int)totLikes);
+	}
+
+	public Short copyWithLikes_And_Token(long totLikes, long timestamp) {
+		var urlWithToken = String.format("%s?token=%s", blobUrl, Token.get(blobUrl, timestamp));
 		return new Short( id, ownerId, urlWithToken, timestamp, (int)totLikes);
 	}	
 }
