@@ -7,11 +7,12 @@ import com.azure.storage.blob.BlobContainerClientBuilder;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import tukano.api.Result;
 import utils.CSVLogger;
-import utils.PropsEnv;
 
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.INTERNAL_ERROR;
@@ -87,7 +88,6 @@ public class AzureClientStorage implements BlobStorage {
 
         try {
             AzureClientStorage azureClientContainer = AzureClientStorage.getInstance();
-
             byte[] result = azureClientContainer.getContainerClient(path).downloadContent().toBytes();
             triggerReadingBlobFunction(path);
 
@@ -98,7 +98,7 @@ public class AzureClientStorage implements BlobStorage {
         }
     }
 
-    private void triggerReadingBlobFunction (String blobName) {
+    private void triggerReadingBlobFunction(String blobName) {
 
 //        String FUNCTION_URL = PropsEnv.get("FUNCTION_URL", "");
 //        String FUNCTION_KEY = PropsEnv.get("FUNCTION_KEY", "");
@@ -107,23 +107,27 @@ public class AzureClientStorage implements BlobStorage {
 
         String urlString = FUNCTION_URL + "&blobname=" + blobName;
 
-        try {
-            URL url = new URL(urlString);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("x-functions-key", FUNCTION_KEY);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.submit(() -> {
+            try {
+                URL url = new URL(urlString);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("x-functions-key", FUNCTION_KEY);
 
-            int responseCode = conn.getResponseCode();
-            String responseMessage = conn.getResponseMessage();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                System.out.println("Function triggered successfully. Response code: " + responseCode);
-            } else {
-                System.out.println("Failed to trigger a function. Response code: " + responseCode);
+                int responseCode = conn.getResponseCode();
+                String responseMessage = conn.getResponseMessage();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    System.out.println("Function triggered successfully. Response code: " + responseCode);
+                } else {
+                    System.out.println("Failed to trigger function. Response code: " + responseCode);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        });
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        executor.shutdown();
     }
 
     @Override
