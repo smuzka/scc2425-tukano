@@ -11,7 +11,7 @@ scenarios:
   - name: TuKanoPostFollow
     flow:
       - post:
-          url: "/shorts/user1/user2/followers?pwd=pass1" #Assuming user1 and user2 in db
+          url: "/shorts/user1/user2/followers?pwd=pass1" #assuming user1 and user2 in db
           headers:
             Content-Type: application/json
           json:

@@ -11,7 +11,7 @@ scenarios:
   - name: TuKanoPostLike
     flow:
       - post:
-          url: "/shorts/user1+ee6b6bd7-7cf8-4211-b5b0-b7c98259c84a/user2/likes?pwd=pass2" #Assuming user2 and shortId in db
+          url: "/shorts/user1+ee6b6bd7-7cf8-4211-b5b0-b7c98259c84a/user2/likes?pwd=pass2" #assuming user2 and shortId in db
           headers:
             Content-Type: application/json
           json:

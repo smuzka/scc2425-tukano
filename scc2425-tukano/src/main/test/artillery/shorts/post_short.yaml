@@ -12,6 +12,6 @@ scenarios:
   - name: TuKanoPostShort
     flow:
       - post:
-          url: "/shorts/user1?pwd=pass1" #Assuming user1 with pass1 in db
+          url: "/shorts/user1?pwd=pass1" #assuming user1 with pass1 in db
           headers:
             Content-Type: application/json
