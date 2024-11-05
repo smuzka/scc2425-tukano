@@ -66,8 +66,8 @@
                             </resource>
                         </resources>
                     </deployment>
-                    <resourceGroup>testscc-backend-rg-smd-71848</resourceGroup>
-                    <appName>testscc-backend-smd-71848</appName>
+                    <resourceGroup>deployment-scc-backend-rg-smd-71848</resourceGroup>
+                    <appName>deployment-scc-backend-smd-71848</appName>
                 </configuration>
             </plugin>
 
@@ -109,11 +109,6 @@
     </build>
     <dependencies>
         <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>javax.ws.rs-api</artifactId>
-            <version>2.1.1</version>
-        </dependency>
-        <dependency>
             <groupId>jakarta.ws.rs</groupId>
             <artifactId>jakarta.ws.rs-api</artifactId>
             <version>3.1.0</version>
@@ -123,6 +118,7 @@
             <artifactId>jackson-jaxrs-json-provider</artifactId>
             <version>2.17.2</version>
         </dependency>
+
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-core</artifactId>
@@ -144,19 +140,12 @@
             <version>6.2.10.Final</version>
         </dependency>
 
-
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-jaxrs</artifactId>
-            <version>3.15.6.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version> <!-- Or the latest version -->
             <scope>provided</scope>
         </dependency>
-
 
         <dependency>
             <groupId>redis.clients</groupId>
@@ -217,9 +206,9 @@
             <version>6.4.4.Final</version>
         </dependency>
         <dependency>
-            <groupId>javax.annotation</groupId>
-            <artifactId>javax.annotation-api</artifactId>
-            <version>1.3.2</version>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
