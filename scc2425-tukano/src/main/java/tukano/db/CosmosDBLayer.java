@@ -29,9 +29,12 @@ public class CosmosDBLayer {
 	private CosmosContainer container;
 	
 	public CosmosDBLayer(String containerName) {
-		DB_KEY = PropsEnv.get("COSMOSDB_KEY", "");
-		CONNECTION_URL = PropsEnv.get("COSMOSDB_URL", "");
-		DB_NAME = PropsEnv.get("COSMOSDB_DATABASE", "");
+//		DB_KEY = PropsEnv.get("COSMOSDB_KEY", "");
+//		CONNECTION_URL = PropsEnv.get("COSMOSDB_URL", "");
+//		DB_NAME = PropsEnv.get("COSMOSDB_DATABASE", "");
+		DB_KEY = System.getenv("COSMOSDB_KEY");
+		CONNECTION_URL = System.getenv("COSMOSDB_URL");
+		DB_NAME = System.getenv("COSMOSDB_DATABASE");
 
 		CosmosClient client = new CosmosClientBuilder()
 				.endpoint(CONNECTION_URL)

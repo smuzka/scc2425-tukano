@@ -26,7 +26,8 @@ public class AzureClientStorage implements BlobStorage {
     CSVLogger csvLogger = new CSVLogger();
 
     public AzureClientStorage() {
-        storageConnectionString = PropsEnv.get("BLOB_STORAGE_CONNECTION", "");
+//        storageConnectionString = PropsEnv.get("BLOB_STORAGE_CONNECTION", "");
+        storageConnectionString = System.getenv("BLOB_STORAGE_CONNECTION");
 
         containerClient = new BlobContainerClientBuilder()
                 .connectionString(storageConnectionString)
@@ -99,8 +100,10 @@ public class AzureClientStorage implements BlobStorage {
 
     private void triggerReadingBlobFunction (String blobName) {
 
-        String FUNCTION_URL = PropsEnv.get("FUNCTION_URL", "");
-        String FUNCTION_KEY = PropsEnv.get("FUNCTION_KEY", "");
+//        String FUNCTION_URL = PropsEnv.get("FUNCTION_URL", "");
+//        String FUNCTION_KEY = PropsEnv.get("FUNCTION_KEY", "");
+        String FUNCTION_URL = System.getenv("FUNCTION_URL");
+        String FUNCTION_KEY = System.getenv("FUNCTION_KEY");
 
         String urlString = FUNCTION_URL + "&blobname=" + blobName;
 

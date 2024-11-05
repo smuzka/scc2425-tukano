@@ -24,10 +24,10 @@ public class RedisJedisPool {
         poolConfig.setMaxIdle(128);
         poolConfig.setMinIdle(16);
 
-        String RedisHostname = PropsEnv.get("REDIS_HOSTNAME", "");
-        int REDIS_PORT = Integer.parseInt(PropsEnv.get("REDIS_PORT", "6380"));
+        String RedisHostname = System.getenv("REDIS_HOSTNAME");
+        int REDIS_PORT = Integer.parseInt(System.getenv("REDIS_PORT"));
         int REDIS_TIMEOUT = 2000;
-        String RedisKey = PropsEnv.get("REDIS_KEY", "");
+        String RedisKey = System.getenv("REDIS_KEY");
         boolean REDIS_USE_TLS = true;
 
         poolConfig.setBlockWhenExhausted(true);
