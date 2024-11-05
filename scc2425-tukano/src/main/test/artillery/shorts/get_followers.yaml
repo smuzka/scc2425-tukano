@@ -1,0 +1,13 @@
+config:
+  target: http://127.0.0.1:8080/rest
+  phases:
+    - name: get_followers
+      duration: 3
+      arrivalCount: 1
+scenarios:
+  - name: TuKanoGetFollowers
+    flow:
+      - get:
+          url: "/shorts/user2/followers?pwd=pass2" #assuming user2 in db
+          headers:
+            Accept: application/json

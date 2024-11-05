@@ -1,0 +1,13 @@
+config:
+  target: http://127.0.0.1:8080/rest
+  phases:
+    - name: get_likes
+      duration: 3
+      arrivalCount: 1
+scenarios:
+  - name: TuKanoGetLikes
+    flow:
+      - get:
+          url: "/shorts/user1+ee6b6bd7-7cf8-4211-b5b0-b7c98259c84a/likes?pwd=pass1" #assuming user2 in db
+          headers:
+            Accept: application/json

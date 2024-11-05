@@ -1,0 +1,13 @@
+config:
+  target: http://127.0.0.1:8080/rest
+  phases:
+    - name: get_shorts
+      duration: 3
+      arrivalCount: 1
+scenarios:
+  - name: TuKanoGetShorts
+    flow:
+      - get:
+          url: "/shorts/user1/shorts?pwd=pass1" #assuming user in db
+          headers:
+            Accept: application/json
