@@ -1,0 +1,13 @@
+config:
+  target: https://deployment-scc-backend-smd-71848.azurewebsites.net/rest
+  phases:
+    - name: get_shorts
+      duration: 3
+      arrivalCount: 1
+scenarios:
+  - name: TuKanoGetShorts
+    flow:
+      - get:
+          url: "/shorts/user1/shorts?pwd=pass1" #assuming user1 in db
+          headers:
+            Accept: application/json

@@ -1,0 +1,18 @@
+config:
+  target: https://deployment-scc-backend-smd-71848.azurewebsites.net/rest
+  plugins:
+    metrics-by-endpoint: { }
+  phases:
+    - name: post_like
+      duration: 3
+      arrivalCount: 1
+      scenario: TuKanoPostLike
+scenarios:
+  - name: TuKanoPostLike
+    flow:
+      - post:
+          url: "/shorts/user1+ee6b6bd7-7cf8-4211-b5b0-b7c98259c84a/user2/likes?pwd=pass2" #assuming user2 and shortId in db
+          headers:
+            Content-Type: application/json
+          json:
+            true

@@ -1,0 +1,17 @@
+config:
+  target: https://deployment-scc-backend-smd-71848.azurewebsites.net/rest
+  plugins:
+    metrics-by-endpoint: { }
+  phases:
+    - name: post_short
+      duration: 3
+      arrivalCount: 1
+      scenario: TuKanoPostShort
+  processor: ./test-utils.js
+scenarios:
+  - name: TuKanoPostShort
+    flow:
+      - post:
+          url: "/shorts/user1?pwd=pass1" #assuming user1 with pass1 in db
+          headers:
+            Content-Type: application/json

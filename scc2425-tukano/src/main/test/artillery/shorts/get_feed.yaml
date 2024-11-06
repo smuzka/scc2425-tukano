@@ -1,0 +1,13 @@
+config:
+  target: https://deployment-scc-backend-smd-71848.azurewebsites.net/rest
+  phases:
+    - name: get_feed
+      duration: 3
+      arrivalCount: 1
+scenarios:
+  - name: TuKanoGetFeed
+    flow:
+      - get:
+          url: "/shorts/user1/feed?pwd=pass1" #assuming user2 in db
+          headers:
+            Accept: application/json
