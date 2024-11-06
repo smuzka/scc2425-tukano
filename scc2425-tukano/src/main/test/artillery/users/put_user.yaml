@@ -1,5 +1,5 @@
 config:
-  target: http://127.0.0.1:8080/rest
+  target: https://deployment-scc-backend-smd-71848.azurewebsites.net/rest
   phases:
     - name: put_user
       duration: 5
