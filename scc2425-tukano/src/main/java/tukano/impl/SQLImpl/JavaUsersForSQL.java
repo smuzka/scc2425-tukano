@@ -5,7 +5,7 @@ import com.microsoft.sqlserver.jdbc.SQLServerException;
 import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
-import tukano.impl.RedisJedisPool;
+//import tukano.impl.RedisJedisPool;
 import tukano.impl.Token;
 import utils.CSVLogger;
 import utils.SqlDB;
@@ -22,7 +22,7 @@ import static tukano.api.Result.*;
 
 public class JavaUsersForSQL implements Users {
 
-	private final static String REDIS_USERS = "users:";
+//	private final static String REDIS_USERS = "users:";
 
 	CSVLogger csvLogger = new CSVLogger();
 	private static Logger Log = Logger.getLogger(JavaUsersForSQL.class.getName());
@@ -47,9 +47,9 @@ public class JavaUsersForSQL implements Users {
 			return error(BAD_REQUEST);
 
 		Result<String> result = errorOrValue( SqlDB.insertOne(user), user.getId());
-		if (result.isOK()) {
-			RedisJedisPool.addToCache(REDIS_USERS + user.getId(), user);
-		}
+//		if (result.isOK()) {
+//			RedisJedisPool.addToCache(REDIS_USERS + user.getId(), user);
+//		}
 		csvLogger.logToCSV("Create user ", System.currentTimeMillis() - startTime);
 		return result;
 	}
@@ -62,11 +62,11 @@ public class JavaUsersForSQL implements Users {
 		if (userId == null)
 			return error(BAD_REQUEST);
 
-		User cacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
-		if (cacheUser != null) {
-			csvLogger.logToCSV("Get user with redis", System.currentTimeMillis() - startTime);
-			return cacheUser.getPwd().equals( pwd ) ? ok(cacheUser) : error(FORBIDDEN);
-		}
+//		User cacheUser = RedisJedisPool.getFromCache(REDIS_USERS + userId, User.class);
+//		if (cacheUser != null) {
+//			csvLogger.logToCSV("Get user with redis", System.currentTimeMillis() - startTime);
+//			return cacheUser.getPwd().equals( pwd ) ? ok(cacheUser) : error(FORBIDDEN);
+//		}
 		var result = validatedUserOrError(SqlDB.getOne( userId, User.class), pwd);
 		csvLogger.logToCSV("Get user without redis", System.currentTimeMillis() - startTime);
 		return result ;
@@ -93,9 +93,9 @@ public class JavaUsersForSQL implements Users {
 		Result<User> result = errorOrResult( validatedUserOrError(SqlDB.getOne( userId, User.class), pwd), user -> SqlDB.updateOne( user.updateFrom(other)));
 		csvLogger.logToCSV("update user", System.currentTimeMillis() - startTime);
 
-		if (result.isOK()) {
-			RedisJedisPool.addToCache(REDIS_USERS + userId, result.value());
-		}
+//		if (result.isOK()) {
+//			RedisJedisPool.addToCache(REDIS_USERS + userId, result.value());
+//		}
 
 		return result;
 	}
@@ -117,9 +117,9 @@ public class JavaUsersForSQL implements Users {
 			Result<User> result = SqlDB.deleteOne( user);
 			csvLogger.logToCSV("delete user", System.currentTimeMillis() - startTime);
 
-			if (result.isOK()) {
-				RedisJedisPool.removeFromCache(REDIS_USERS + userId);
-			}
+//			if (result.isOK()) {
+//				RedisJedisPool.removeFromCache(REDIS_USERS + userId);
+//			}
 			return result;
 		});
 	}
