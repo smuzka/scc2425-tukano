@@ -1,26 +1,19 @@
 
-# TuKano app ported into Azure
+# TuKano app ported into Kubernetes
 
-## Azure resources setup
-From AzureTools folder:
-- run `mvn clean compile assembly:single`
-- run `java -cp target/scc2425-mgt-1.0-jar-with-dependencies.jar scc.mgt.AzureManagement`
-- Change names in `azureprops-<region>.sh` from `fun<your_id><region>` to `app<your_id><region>` 
-- run `./azureprops-<region>.sh`
-
-#### Deleting Azure resources
-From AzureTools folder
-- run `java -cp target/scc2425-mgt-1.0-jar-with-dependencies.jar scc.mgt.AzureManagement --delete`
-
-## Setup project locally:
+## Creating .war file:
 From scc-2425-tukano folder:
-- run `mvn clean install exec:java`
+- run `mvn clean install`
 
-## Deploy project on Azure:
+## Run docker-compose:
 From scc-2425-tukano folder:
-- run `mvn clean compile package azure-webapp:deploy`
+- run `docker-compose up --build`
+### Endpoints should be available at the following URLs:
+- For shorts: http://localhost:8080/tukano-1/rest/shorts
+- For users: http://localhost:8080/tukano-1/rest/users
 
-## Azure functions setup
-From AzureFunctions folder:
-- run `mvn clean compile package azure-functions:deploy
-`
+## Stopping Docker Containers
+#### Stopping docker containers:
+- run `docker-compose down`
+#### Stopping docker containers and removing volumes:
+- run `docker-compose down -v`
