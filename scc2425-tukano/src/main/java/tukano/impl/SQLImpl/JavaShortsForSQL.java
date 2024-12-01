@@ -3,7 +3,7 @@ package tukano.impl.SQLImpl;
 import tukano.api.Short;
 import tukano.api.*;
 import tukano.impl.JavaBlobs;
-//import tukano.impl.RedisJedisPool;
+import tukano.impl.RedisJedisPool;
 import tukano.impl.Token;
 import tukano.impl.data.Following;
 import tukano.impl.data.Likes;
@@ -19,7 +19,7 @@ import static tukano.api.Result.*;
 
 public class JavaShortsForSQL implements Shorts {
 
-//	private final static String REDIS_SHORTS = "shorts:";
+	private final static String REDIS_SHORTS = "shorts:";
 
 	CSVLogger csvLogger = new CSVLogger();
 	private static Logger Log = Logger.getLogger(JavaShortsForSQL.class.getName());
@@ -48,9 +48,9 @@ public class JavaShortsForSQL implements Shorts {
 
 			Result<Short> result = errorOrValue(SqlDB.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
 			csvLogger.logToCSV("create short", System.currentTimeMillis() - startTime);
-//			if (result.isOK()) {
-//				RedisJedisPool.addToCache(REDIS_SHORTS + shortId, shrt);
-//			}
+			if (result.isOK()) {
+				RedisJedisPool.addToCache(REDIS_SHORTS + shortId, shrt);
+			}
 
 			return result;
 		});
@@ -66,11 +66,11 @@ public class JavaShortsForSQL implements Shorts {
 		var sqlQuery = format("SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
 		var sqlLikes = SqlDB.sql(sqlQuery, Long.class);
 
-//		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
-//		if (CacheShort != null) {
-//			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
-//			return ok(CacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
-//		}
+		Short CacheShort = RedisJedisPool.getFromCache(REDIS_SHORTS + shortId, Short.class);
+		if (CacheShort != null) {
+			csvLogger.logToCSV("Get short with redis", System.currentTimeMillis() - startTime);
+			return ok(CacheShort.copyWithLikes_And_Token( sqlLikes.get(0)));
+		}
 
 		Result<Short> result = errorOrValue( SqlDB.getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( sqlLikes.get(0)));
 		csvLogger.logToCSV("Get short without redis", System.currentTimeMillis() - startTime);
@@ -91,7 +91,7 @@ public class JavaShortsForSQL implements Shorts {
 					JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get(shrt.getBlobUrl()) );
 					hibernate.createNativeQuery( query, Likes.class).executeUpdate();
 					csvLogger.logToCSV("delete short", System.currentTimeMillis() - startTime);
-//					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortId);
+					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortId);
 				});
 			});
 		});
@@ -193,9 +193,9 @@ public class JavaShortsForSQL implements Shorts {
 
 			for (Short shortItem : shortsToDelete) {
 				Result<Void> deleteBlobResult = JavaBlobs.getInstance().delete(shortItem.getBlobUrl(), Token.get(shortItem.getBlobUrl()));
-//				if (deleteBlobResult.isOK()) {
-//					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortItem.getId());
-//				}
+				if (deleteBlobResult.isOK()) {
+					RedisJedisPool.removeFromCache(REDIS_SHORTS + shortItem.getId());
+				}
 			}
 
 			//delete shorts
