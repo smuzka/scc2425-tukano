@@ -19,5 +19,8 @@ services:
       - postgres
     ports:
       - "8080:8080"
+    volumes:
+      - java_app_data:/app/data
 volumes:
   postgres_data:
+  java_app_data:
