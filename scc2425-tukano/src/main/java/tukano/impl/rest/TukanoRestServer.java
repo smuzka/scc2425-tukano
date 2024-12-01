@@ -6,7 +6,13 @@ import java.util.Set;
 import java.util.logging.Logger;
 import jakarta.ws.rs.core.Application;
 
+import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
+import org.glassfish.jersey.server.ResourceConfig;
+
+import tukano.impl.Token;
+import utils.Args;
 import utils.IP;
+import utils.PropsEnv;
 
 
 public class TukanoRestServer extends Application {
@@ -37,12 +43,44 @@ public class TukanoRestServer extends Application {
 	}
 
 	public TukanoRestServer() {
-		serverURI = String.format(SERVER_BASE_URI, IP.hostname(), PORT);
-
 		singletons.add(new RestBlobsResource());
-		singletons.add(new RestUsersResourceForSQL());
-		singletons.add(new RestShortsResourceForSQL());
+		singletons.add(new RestUsersResource());
+		singletons.add(new RestShortsResource());
+
+		serverURI = String.format(SERVER_BASE_URI, IP.hostname(), PORT);
 	}
 
-	public static void main(String[] args) { }
+
+	protected void start() throws Exception {
+	
+		ResourceConfig config = new ResourceConfig();
+
+		config.register(RestBlobsResource.class);
+
+		boolean useSQLImpl = false; //changes the db mode from sql to nosql
+		if(useSQLImpl){
+			config.register(RestUsersResourceForSQL.class);
+			config.register(RestShortsResourceForSQL.class);
+		}
+		else{
+			config.register(RestUsersResource.class);
+			config.register(RestShortsResource.class);
+		}
+
+		JdkHttpServerFactory.createHttpServer( URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
+
+		PropsEnv.load("azurekeys-region.props");
+
+		Log.info(String.format("Tukano Server ready @ %s\n",  serverURI));
+	}
+	
+	
+	public static void main(String[] args) throws Exception {
+		Args.use(args);
+		
+		Token.setSecret( Args.valueOf("-secret", ""));
+//		Props.load( Args.valueOf("-props", "").split(","));
+		
+		new TukanoRestServer().start();
+	}
 }
